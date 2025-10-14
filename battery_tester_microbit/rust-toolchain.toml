@@ -1,0 +1,16 @@
+[toolchain]
+channel = "stable"
+targets = [
+	"thumbv7em-none-eabihf"
+]
+components = [
+	"clippy",
+	"rustfmt",
+	"rust-std",
+	"cargo",
+	"rustc",
+	"rust-docs",
+	"rust-src",
+	"rust-analyzer",
+	"llvm-tools"
+]

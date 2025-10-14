@@ -1,0 +1,28 @@
+[package]
+name = "battery_tester_pc"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+path = "./src/client.rs"
+name = "battery-tester-client"
+
+[[bin]]
+path ="./src/server.rs"
+name = "battery-tester-server"
+
+[lib]
+name = "pc_common"
+path = "./src/lib.rs"
+
+[dependencies]
+argh = "0.1.13"
+futures = "0.3.31"
+tipsy = "0.6.3"
+tokio = { version = "1.47.1", features = ["fs", "io-std", "io-util", "macros", "process", "signal", "sync", "time", "parking_lot", "rt", "rt-multi-thread"] }
+tokio-serial = "5.4.5"
+postcard = {version =  "1.1.3", features = ["experimental-derive"]}
+battery_tester_common = {path = "../battery_tester_common"}
+bytes = "1.10.1"
+serde = { version = "1.0.228", default-features = false, features = ["derive"] }
+chrono = "0.4.42"

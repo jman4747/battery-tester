@@ -1,0 +1,25 @@
+[[language]]
+name = "rust"
+auto-format = true
+indent = { tab-width = 2, unit = "\t" }
+
+roots = [
+	"Cargo.toml",
+	"Cargo.lock"
+]
+
+[laguage-server.rust-analyzer]
+command = "rust-analyzer"
+
+[laguage-server.rust-analyzer.config]
+cargo.target = "thumbv7em-none-eabihf"
+
+[laguage-server.rust-analyzer.config.check]
+allTargets = false
+# extraArgs = ["--target", "thumbv7em-none-eabihf"]
+
+# [laguage-server.rust-analyzer.config]
+# cargo.target = "thumbv7em-none-eabihf"
+# cargo.features = "all"
+# check.allTargets = false
+# checkOnSave.allTargets = false

@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+	"battery_tester_common",
+	"battery_tester_microbit",
+	"battery_tester_pc"
+]
+
+[workspace.package]
+edition = "2024"
+
+
