@@ -3,4 +3,45 @@ name = "battery_tester_microbit"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "microbit-side"
+path = "./src/main.rs"
+test = false
+doctest = false
+bench = false
+
+[lib]
+name = "microbit_side_lib"
+path = "./src/lib.rs"
+test = false
+doctest = false
+bench = false
+
 [dependencies]
+battery_tester_common = {path = "../battery_tester_common"}
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7.5"
+defmt = "1.0.1"
+defmt-rtt = "1.1.0"
+embassy-executor = { version = "0.9.1", features = [ "arch-cortex-m", "defmt", "executor-thread", "executor-interrupt"] }
+embassy-futures = { version = "0.1.1", features = ["defmt"] }
+embassy-nrf = { version = "0.8.0", features = [
+    "defmt", 
+    "gpiote", 
+    "nrf52833",
+    "time",
+    "time-driver-rtc1"
+] }
+embassy-sync = { version = "0.7.2", features = ["defmt"] }
+embassy-time = { version = "0.5.0", features = ["defmt", "defmt-timestamp-uptime"] }
+panic-probe = { version = "1.0.0", features = ["print-defmt"] }
+postcard = {version =  "1.1.1", features = ["experimental-derive"]}
+heapless = { version = "0.9.1" }
+embedded-hal-async = "1.0.0"
+fixed = "1.29.0"
+nutype = { version = "0.6.2",  default-features = false, features = ["serde"] }
+
+# for temperature sensors, not using yet...
+# bme280 = { version = "0.5.1", features = ["embedded-hal-async", "defmt"] }
+# sensirion-i2c = { version = "0.4.0", features = ["embedded-hal-async"] }
+# sht4x = { version = "0.2.0", features = ["defmt", "embedded-hal-async"] }

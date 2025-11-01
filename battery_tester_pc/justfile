@@ -1,0 +1,28 @@
+set shell := ["nu", "-c"]
+
+just:
+	just --list
+
+cutoff:
+    cargo run --bin battery-tester-client -- cutoff 11800
+
+id:
+    cargo run --bin battery-tester-client -- id -y 2025 -i 4
+
+device:
+    cargo run --bin battery-tester-client -- device "/dev/ttyACM0"
+
+start:
+    cargo run --bin battery-tester-client -- start
+
+shutdown:
+    cargo run --bin battery-tester-client -- shutdown
+
+clear:
+    cargo run --bin battery-tester-client -- clear
+
+under:
+    cargo run --bin battery-tester-client -- undercurrent --allow
+
+server:
+    cargo run --bin battery-tester-server -- "./"

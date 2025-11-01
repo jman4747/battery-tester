@@ -166,3 +166,48 @@ The PC would have more overhead to handle whatever control logic while the BI wo
 BI will translate PC commands into commands to the Load Controller and send back readings from the Current and Voltage sensors.
 BI and PC will be connected by USB or Serial (over USB) as this is the only option available on most PCs.
 
+## Requirements
+
+* The BI shall turn off the heater if it detects lower than expected current.
+* The BI shall turn off the heater if it detects higher than expected current.
+* The BI shall turn off the heater if it doesn't receive a control signal from the PC at 1Hz or more often.
+* The BI shall collect measurements at 10Hz.
+* The BI shall average every 10 measurements.
+* The BI shall store the average of the most recent 10 measurements.
+* The BI shall use the most recent measurement for checking heater current.
+* The BI shall how many milliseconds since heater state changed from off to on.
+* The BI shall Check that battery is connected before attempting I2C communication.
+
+# Physical Architecture
+ Collect data while on.
+Update heater on every command received.
+
+On every 10Hz interval:
+
+1. Check that battery is connected before attempting I2C comm
+1. Check that current is in expected range
+1. Check how long its been since the last command
+1. Update the DAQ queue
+1. Read most recent command
+
+On every command:
+
+1. Update heater output
+1. Update command time
+1. Send whatever the command asks for
+
+When heater is turned on reset and start the test start time.
+When command asks for time, send how long its been since the test start time. 
+
+## Software
+
+Two tasks, one for handling DAQ and one for PC comm.
+Both tasks share access to PWM so either can turn it off in the same loop.
+
+## Hardware
+
+* PWM motor controller
+* 5V supply
+* I2C isolator
+* Opto-isolator (for PWM)
+* INA260

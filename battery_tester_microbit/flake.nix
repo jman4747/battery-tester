@@ -26,14 +26,24 @@
         rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
-        src = nixpkgs.lib.cleanSourceWith {
-          # inherit filter;
-          src = ./.;
-          name = "source";
+        # src = nixpkgs.lib.cleanSourceWith {
+        #   # inherit filter;
+        #   src = ./.;
+        #   name = "source";
+        # };
+
+        unfilteredRoot = ./.;
+        src = pkgs.lib.fileset.toSource {
+          root = unfilteredRoot;
+          fileset = pkgs.lib.fileset.unions [
+            (craneLib.fileset.commonCargoSources unfilteredRoot)
+            (pkgs.lib.fileset.fileFilter (file: file.hasExt "x") unfilteredRoot)
+          ];
         };
 
         nativeBuildInputs = with pkgs; [ rustToolchain pkg-config ];
         buildInputs = with pkgs; [
+          probe-rs-tools
         ];
 
         commonArgs = {
@@ -52,7 +62,7 @@
           default = bin;
         };
         devShells.default = mkShell {
-          inputsFrom = [ bin ];
+          inputsFrom = [ bin src ];
         };
       }
     );
