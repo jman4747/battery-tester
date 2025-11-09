@@ -98,8 +98,10 @@ impl DaqDataQueue {
 		self.milliamps[self.index] = vin_milliamps;
 		self.millivolts[self.index] = vin_millivolts;
 		if self.index == 9 {
-			let duration = Instant::now() - self.start;
+			let now = Instant::now();
+			let duration = now - self.start;
 			self.index = 0;
+			self.start = now;
 			Some((
 				self.avg_millivolts(),
 				self.avg_milliamps(),
@@ -107,7 +109,6 @@ impl DaqDataQueue {
 				duration,
 			))
 		} else if self.index == 0 {
-			self.start = Instant::now();
 			self.index += 1;
 			None
 		} else {

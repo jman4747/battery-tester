@@ -87,6 +87,7 @@ async fn serial_reply_task(mut serial_out: UarteTx<'static>) -> ! {
 		let reply = REPLY_CH.receive().await;
 		let out_msg = postcard::to_slice(&reply, &mut out_buf).unwrap();
 		let out_len = out_msg.len() as u8;
+		// info!("len: {}", out_len);
 		if let Err(e) = serial_out.write(&[out_len]).await {
 			error!("write len error: {}", e);
 			continue;
@@ -176,11 +177,11 @@ async fn power_ctrl_loop(
 	const COM_TIMEOUT: u64 = 1_250;
 	loop {
 		let mut measurement: Option<Measurement> = None;
-		let mut daq_queue = DaqDataQueue::default();
 		// do this so the ticker doesn't store ticks while we wait for fault clear
-		let mut daq_ticker = Ticker::every(Duration::from_millis(DAQ_INTERVAL_MS));
 		let mut com_timeout_ticker = Ticker::every(Duration::from_millis(COM_TIMEOUT));
 		let mut allow_undercurrent = AllowUndercurrent::default();
+		let mut daq_queue = DaqDataQueue::default();
+		let mut daq_ticker = Ticker::every(Duration::from_millis(DAQ_INTERVAL_MS));
 		loop {
 			match select3(
 				daq_ticker.next(),
@@ -201,10 +202,10 @@ async fn power_ctrl_loop(
 					{
 						Ok(Some(new_measurement)) => {
 							info!(
-								"New measurement: {}, {}, t: {}, d: {}",
+								"daq: {}, {}, t: {}, d: {}",
 								new_measurement.vbat,
 								new_measurement.ibat,
-								new_measurement.t_start,
+								new_measurement.dt,
 								new_measurement.duration
 							);
 							let _old_measurement = measurement.replace(new_measurement);
@@ -345,7 +346,7 @@ fn daq_to_measurement(pwr: (MilliVolt, MilliAmp, Instant, Duration)) -> Measurem
 	Measurement {
 		vbat: pwr.0,
 		ibat: pwr.1,
-		t_start: pwr.2.as_millis(),
+		dt: pwr.2.as_millis(),
 		duration: pwr.3.as_millis(),
 	}
 }

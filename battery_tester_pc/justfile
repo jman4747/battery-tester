@@ -24,5 +24,11 @@ clear:
 under:
     cargo run --bin battery-tester-client -- undercurrent --allow
 
+setup-test:
+    cargo run --bin battery-tester-client -- cutoff 11800
+    cargo run --bin battery-tester-client -- id -y 2025 -i 4
+    cargo run --bin battery-tester-client -- undercurrent --allow
+    cargo run --bin battery-tester-client -- device "/dev/ttyACM0"
+
 server:
     cargo run --bin battery-tester-server -- "./"

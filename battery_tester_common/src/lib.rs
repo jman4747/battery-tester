@@ -100,7 +100,7 @@ pub enum LoadState {
 pub struct Measurement {
 	pub vbat: MilliVolt,
 	pub ibat: MilliAmp,
-	pub t_start: u64,
+	pub dt: u64,
 	pub duration: u64,
 }
 

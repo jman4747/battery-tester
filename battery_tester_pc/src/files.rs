@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::{Event, FileCmd, SaveData};
 
-const HEADER_NL: &[u8] = b"start\tduration\tmillivolts\tmilliamps\n";
+const HEADER_NL: &[u8] = b"dt\tduration\tmillivolts\tmilliamps\n";
 
 pub async fn file_task(event_tx: Sender<Event>, mut file_cmd_rx: Receiver<FileCmd>) {
 	let mut persistance: Option<DataPersistance> = None;
@@ -79,9 +79,9 @@ impl DataPersistance {
 	pub async fn new_data(&mut self, data: &SaveData) {
 		let mv = data.millivolts;
 		let ma = data.milliamps;
-		let start = data.t_start;
+		let dt = data.dt;
 		let duration = data.duration;
-		write!(&mut self.out_buf, "{start}\t{duration}\t{mv}\t{ma}\n",).unwrap();
+		write!(&mut self.out_buf, "{dt}\t{duration}\t{mv}\t{ma}\n",).unwrap();
 		self.buffered_records += 1;
 		if self.buffered_records == 10 {
 			self.buffered_records = 0;

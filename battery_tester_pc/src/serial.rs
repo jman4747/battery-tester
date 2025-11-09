@@ -1,5 +1,4 @@
 use battery_tester_common::{BIReply, BiCommand};
-use bytes::BytesMut;
 use tokio::{
 	io::AsyncReadExt,
 	select,
@@ -14,7 +13,7 @@ use crate::{
 };
 
 pub async fn serial_com_task(
-	event_tx: Sender<Event>,
+	mut event_tx: Sender<Event>,
 	mut com_cmd_rx: Receiver<ComCmd>,
 	mut printer: Printer,
 ) {
@@ -46,7 +45,7 @@ pub async fn serial_com_task(
 	// we send at 2Hz
 	let mut tx_interval = time::interval(Duration::from_millis(500));
 	tx_interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
-	let mut incoming_buf: BytesMut = BytesMut::with_capacity(INCOMING_MAX_SIZE);
+	let mut incoming_buf: Vec<u8> = Vec::with_capacity(INCOMING_MAX_SIZE * 2);
 	let mut bi_command = BiCommand::default();
 	loop {
 		let new_cmd: Option<ComCmd> = select! {
@@ -56,8 +55,9 @@ pub async fn serial_com_task(
 			}
 			serial_resp = serial_read_response(&mut daq_serial, &mut incoming_buf) => {
 				match serial_resp {
-					Ok(reply) => {
-						event_tx.send(Event::ComReply(reply)).await.unwrap();
+					Ok(_reply) => {
+						serial_decode(&mut incoming_buf, &mut event_tx).await;
+						// event_tx.send(Event::ComReply(reply)).await.unwrap();
 						None
 					}
 					Err(e) => {
@@ -174,17 +174,57 @@ async fn serial_write_general(
 
 async fn serial_read_response(
 	serial_read: &mut SerialStream,
-	incoming_buf: &mut BytesMut,
-) -> Result<BIReply, tokio_serial::Error> {
-	incoming_buf.clear();
-	// first byte is message len
-	assert!(INCOMING_MAX_SIZE < u8::MAX as usize);
-	let message_total = serial_read.read_u8().await.map(|len| len as usize)?;
+	incoming_buf: &mut Vec<u8>,
+) -> Result<(), tokio_serial::Error> {
+	let _num_read = serial_read.read_buf(incoming_buf).await?;
+	Ok(())
+}
 
-	let mut remaining = message_total;
-	while remaining > 0 {
-		remaining -= serial_read.read_buf(incoming_buf).await?;
+async fn serial_decode(incoming_buf: &mut Vec<u8>, event_tx: &mut Sender<Event>) {
+	let mut idx = 0;
+	loop {
+		// first byte is message len
+		let msg_len = match incoming_buf.get(idx) {
+			// buffer has a length byte at the front
+			Some(l) => *l as usize,
+			// buffer is empty
+			None => break,
+		};
+		// message starts at first byte after length
+		let msg_start = idx + 1;
+		// calculate where the message would end if it were complete
+		let msg_end = msg_len + msg_start;
+		let raw_msg = match incoming_buf.get(msg_start..msg_end) {
+			// message is complete
+			Some(rm) => rm,
+			// message is not complete
+			None => break,
+		};
+		let reply: BIReply = postcard::from_bytes(raw_msg).unwrap();
+		event_tx.send(Event::ComReply(reply)).await.unwrap();
+		idx = msg_end
 	}
-	let response: BIReply = postcard::from_bytes(&incoming_buf[..message_total]).unwrap();
-	Ok(response)
+
+	// if there's an incomplete message in the buffer
+	let new_len = incoming_buf.len() - idx;
+	if new_len != 0 {
+		// move the incomplete message to the front of the buffer
+		// the first byte that gives message length must be at the front,
+		// next time this function is called with the same buffer
+		incoming_buf.copy_within(idx.., 0);
+	}
+
+	// len = 7
+	// [2, a, b, 3, a, b, c]
+	// [0, 1, 2, 3, 4, 5, 6]~7
+	// start = 4, end = 3 (len) + 4 (start) = 7
+	// new_len = 7 - 7 = 0
+	// len = 8
+	// [2, a, b, 3, a, b, c, 2]
+	// [0, 1, 2, 3, 4, 5, 6, 7]~8
+	// start = 4, end = 3 + 4 = 7, buf[7] = 2
+	// new_len = 8 - 7 = 1
+
+	// shrink the length (NOT CAPACITY) of the buffer to fit the incomplete message
+	incoming_buf.truncate(new_len);
 }

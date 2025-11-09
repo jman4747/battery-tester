@@ -274,7 +274,7 @@ pub enum FileCmd {
 pub struct SaveData {
 	pub millivolts: MilliVolt,
 	pub milliamps: MilliAmp,
-	pub t_start: u64,
+	pub dt: u64,
 	pub duration: u64,
 }
 
