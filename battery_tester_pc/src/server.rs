@@ -229,7 +229,8 @@ async fn testing(
 							.send(FileCmd::Push(SaveData {
 								millivolts: m.vbat,
 								milliamps: m.ibat,
-								dt_millis: m.t,
+								t_start: m.t_start,
+								duration: m.duration,
 							}))
 							.await
 							.unwrap();

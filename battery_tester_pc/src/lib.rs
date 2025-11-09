@@ -274,7 +274,8 @@ pub enum FileCmd {
 pub struct SaveData {
 	pub millivolts: MilliVolt,
 	pub milliamps: MilliAmp,
-	pub dt_millis: u64,
+	pub t_start: u64,
+	pub duration: u64,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

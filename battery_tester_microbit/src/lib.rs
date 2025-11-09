@@ -2,7 +2,7 @@
 
 use battery_tester_common::{MilliAmp, MilliVolt, TiwmError};
 use embassy_nrf::twim;
-use embassy_time::{Instant, Timer};
+use embassy_time::{Duration, Instant, Timer};
 
 pub mod ina260;
 pub mod pwm;
@@ -58,7 +58,7 @@ fn millivolt_to_u32(millivolt: &MilliVolt) -> u32 {
 
 pub struct DaqDataQueue {
 	index: usize,
-	start: u64,
+	start: Instant,
 	milliamps: [MilliAmp; 10],
 	millivolts: [MilliVolt; 10],
 }
@@ -66,15 +66,15 @@ pub struct DaqDataQueue {
 impl DaqDataQueue {
 	pub fn reset(&mut self) {
 		self.index = 0;
-		self.start = 0;
+		self.start = Instant::now();
 		self.milliamps = [MilliAmp::default(); 10];
 		self.millivolts = [MilliVolt::default(); 10];
 	}
 
-	pub const fn default_const() -> Self {
+	pub fn default() -> Self {
 		Self {
 			index: 0,
-			start: 0,
+			start: Instant::now(),
 			milliamps: [MilliAmp::new(0u16); 10],
 			millivolts: [MilliVolt::new(0u16); 10],
 		}
@@ -90,30 +90,24 @@ impl DaqDataQueue {
 		MilliVolt::new((sum / 10) as u16)
 	}
 
-	pub fn get_latest_vin_v(&self) -> MilliVolt {
-		self.millivolts[self.index]
-	}
-
-	pub fn get_latest_vin_amps(&self) -> MilliAmp {
-		self.milliamps[self.index]
-	}
-
 	pub fn push(
 		&mut self,
 		vin_milliamps: MilliAmp,
 		vin_millivolts: MilliVolt,
-	) -> Option<(MilliVolt, MilliAmp, u64)> {
+	) -> Option<(MilliVolt, MilliAmp, Instant, Duration)> {
 		self.milliamps[self.index] = vin_milliamps;
 		self.millivolts[self.index] = vin_millivolts;
 		if self.index == 9 {
+			let duration = Instant::now() - self.start;
 			self.index = 0;
 			Some((
 				self.avg_millivolts(),
 				self.avg_milliamps(),
-				(Instant::now().as_millis() + self.start) / 2,
+				self.start,
+				duration,
 			))
 		} else if self.index == 0 {
-			self.start = Instant::now().as_millis();
+			self.start = Instant::now();
 			self.index += 1;
 			None
 		} else {

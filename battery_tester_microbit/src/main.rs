@@ -176,7 +176,7 @@ async fn power_ctrl_loop(
 	const COM_TIMEOUT: u64 = 1_250;
 	loop {
 		let mut measurement: Option<Measurement> = None;
-		let mut daq_queue = DaqDataQueue::default_const();
+		let mut daq_queue = DaqDataQueue::default();
 		// do this so the ticker doesn't store ticks while we wait for fault clear
 		let mut daq_ticker = Ticker::every(Duration::from_millis(DAQ_INTERVAL_MS));
 		let mut com_timeout_ticker = Ticker::every(Duration::from_millis(COM_TIMEOUT));
@@ -189,7 +189,30 @@ async fn power_ctrl_loop(
 			)
 			.await
 			{
-				Either3::First(_daq_interval) => {}
+				Either3::First(_daq_interval) => {
+					match daq(
+						i2c,
+						&bat_present,
+						pwm_ctrl,
+						&mut daq_queue,
+						allow_undercurrent,
+					)
+					.await
+					{
+						Ok(Some(new_measurement)) => {
+							info!(
+								"New measurement: {}, {}, t: {}, d: {}",
+								new_measurement.vbat,
+								new_measurement.ibat,
+								new_measurement.t_start,
+								new_measurement.duration
+							);
+							let _old_measurement = measurement.replace(new_measurement);
+						}
+						Ok(None) => {}
+						Err(fk) => return fk,
+					}
+				}
 				Either3::Second(cmd) => {
 					match cmd.load {
 						LoadState::Off => {
@@ -217,23 +240,6 @@ async fn power_ctrl_loop(
 					error!("lost comms");
 				}
 			};
-
-			match daq(
-				i2c,
-				&bat_present,
-				pwm_ctrl,
-				&mut daq_queue,
-				allow_undercurrent,
-			)
-			.await
-			{
-				Ok(Some(new_measurement)) => {
-					info!("New measurement: {}", new_measurement);
-					let _old_measurement = measurement.replace(new_measurement);
-				}
-				Ok(None) => {}
-				Err(fk) => return fk,
-			}
 		}
 		info!("disconnect and reconnect battery");
 		wait_bat_reconnect(bat_present, BAT_CONNECT_DEBOUNCE_MS).await;
@@ -335,11 +341,12 @@ async fn wait_fault_clear(btn_a: &mut Input<'static>, fault: Fault) {
 	}
 }
 
-fn daq_to_measurement(pwr: (MilliVolt, MilliAmp, u64)) -> Measurement {
+fn daq_to_measurement(pwr: (MilliVolt, MilliAmp, Instant, Duration)) -> Measurement {
 	Measurement {
 		vbat: pwr.0,
 		ibat: pwr.1,
-		t: pwr.2,
+		t_start: pwr.2.as_millis(),
+		duration: pwr.3.as_millis(),
 	}
 }
 

@@ -100,7 +100,8 @@ pub enum LoadState {
 pub struct Measurement {
 	pub vbat: MilliVolt,
 	pub ibat: MilliAmp,
-	pub t: u64,
+	pub t_start: u64,
+	pub duration: u64,
 }
 
 #[derive(Debug, PartialEq, Eq, MaxSize, Format, Clone, Copy, Deserialize, Serialize)]

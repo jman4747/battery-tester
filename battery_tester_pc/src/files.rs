@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::io::Write;
 use tokio::{
 	fs::File,
 	io::AsyncWriteExt,
@@ -6,6 +6,8 @@ use tokio::{
 };
 
 use crate::{Event, FileCmd, SaveData};
+
+const HEADER_NL: &[u8] = b"start\tduration\tmillivolts\tmilliamps\n";
 
 pub async fn file_task(event_tx: Sender<Event>, mut file_cmd_rx: Receiver<FileCmd>) {
 	let mut persistance: Option<DataPersistance> = None;
@@ -45,20 +47,17 @@ pub async fn file_task(event_tx: Sender<Event>, mut file_cmd_rx: Receiver<FileCm
 }
 
 pub struct DataPersistance {
-	out_buf: String,
+	out_buf: Vec<u8>,
 	buffered_records: u8,
 	out_file: File,
 }
 
 impl DataPersistance {
 	pub async fn new(mut out_file: File) -> Self {
-		out_file
-			.write_all(b"milliseconds\tmillivolts\tmilliamps\n")
-			.await
-			.unwrap();
+		out_file.write_all(HEADER_NL).await.unwrap();
 		out_file.flush().await.unwrap();
 		Self {
-			out_buf: String::with_capacity(512),
+			out_buf: Vec::with_capacity(512),
 			buffered_records: 0,
 			out_file,
 		}
@@ -67,7 +66,7 @@ impl DataPersistance {
 	pub async fn new_file(&mut self, out_file: File) {
 		self.write_all().await;
 		self.out_file = out_file;
-		writeln!(&mut self.out_buf, "milliseconds\tmillivolts\tmilliamps",).unwrap();
+		Write::write(&mut self.out_buf, HEADER_NL).unwrap();
 		self.write_all().await;
 	}
 
@@ -80,8 +79,9 @@ impl DataPersistance {
 	pub async fn new_data(&mut self, data: &SaveData) {
 		let mv = data.millivolts;
 		let ma = data.milliamps;
-		let dt = data.dt_millis;
-		writeln!(&mut self.out_buf, "{dt}\t{mv}\t{ma}",).unwrap();
+		let start = data.t_start;
+		let duration = data.duration;
+		write!(&mut self.out_buf, "{start}\t{duration}\t{mv}\t{ma}\n",).unwrap();
 		self.buffered_records += 1;
 		if self.buffered_records == 10 {
 			self.buffered_records = 0;
@@ -91,10 +91,7 @@ impl DataPersistance {
 	}
 
 	async fn write_all(&mut self) {
-		self.out_file
-			.write_all(self.out_buf.as_bytes())
-			.await
-			.unwrap();
+		self.out_file.write_all(&self.out_buf).await.unwrap();
 		self.out_file.flush().await.unwrap();
 		self.out_buf.clear();
 	}
